@@ -1,0 +1,28 @@
+@ftpaste_backend_HostAddress = http://localhost:5044
+
+### Create a new paste
+POST {{ftpaste_backend_HostAddress}}/api/pastes
+Content-Type: application/json
+
+{
+  "content": "This is a sample paste content.",
+  "expiresAt": null
+}
+
+### Retrieve a paste by pasteId
+GET {{ftpaste_backend_HostAddress}}/api/pastes/{pasteId}
+Accept: application/json
+
+### Delete a paste using deleteToken as a header
+DELETE {{ftpaste_backend_HostAddress}}/api/pastes/{pasteId}
+Delete-Token: {deleteToken}
+
+### Retrieve raw paste content
+GET {{ftpaste_backend_HostAddress}}/api/pastes/{pasteId}/raw
+Accept: text/plain
+
+### Weather forecast example
+GET {{ftpaste_backend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
