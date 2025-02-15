@@ -5,7 +5,10 @@
       "label": "build",
       "command": "dotnet",
       "type": "process",
-      "args": ["build", "${workspaceFolder}/ftpaste.api/ftpaste.api.csproj"],
+      "args": [
+        "build",
+        "${workspaceFolder}/ftpaste-backend/ftpaste.api/ftpaste.api.csproj"
+      ],
       "problemMatcher": "$msCompile"
     }
   ]

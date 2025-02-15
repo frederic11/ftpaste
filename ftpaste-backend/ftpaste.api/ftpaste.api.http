@@ -1,4 +1,6 @@
 @ftpaste_backend_HostAddress = http://localhost:5044
+@pasteId = 804cbd22-4f8c-4ce9-b099-924c3d435994
+@deleteToken = c6d1a185-7396-41b4-ad93-125306aceecc
 
 ### Create a new paste
 POST {{ftpaste_backend_HostAddress}}/api/pastes
@@ -10,19 +12,15 @@ Content-Type: application/json
 }
 
 ### Retrieve a paste by pasteId
-GET {{ftpaste_backend_HostAddress}}/api/pastes/{pasteId}
+GET {{ftpaste_backend_HostAddress}}/api/pastes/{{pasteId}}
 Accept: application/json
 
 ### Delete a paste using deleteToken as a header
-DELETE {{ftpaste_backend_HostAddress}}/api/pastes/{pasteId}
-Delete-Token: {deleteToken}
+DELETE {{ftpaste_backend_HostAddress}}/api/pastes/{{pasteId}}
+Delete-Token: {{deleteToken}}
 
 ### Retrieve raw paste content
-GET {{ftpaste_backend_HostAddress}}/api/pastes/{pasteId}/raw
+GET {{ftpaste_backend_HostAddress}}/api/pastes/{{pasteId}}/raw
 Accept: text/plain
 
-### Weather forecast example
-GET {{ftpaste_backend_HostAddress}}/weatherforecast/
-Accept: application/json
 
-###

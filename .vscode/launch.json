@@ -8,7 +8,7 @@
       "name": "C#: ftpaste.api Debug",
       "type": "dotnet",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/ftpaste.api/ftpaste.api.csproj",
+      "projectPath": "${workspaceFolder}/ftpaste-backend/ftpaste.api/ftpaste.api.csproj",
       "preLaunchTask": "build"
     }
   ]
