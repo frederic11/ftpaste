@@ -1,6 +1,8 @@
 "use client";
 
 import type React from "react";
+import { useRouter } from "next/navigation";
+import Editor from "@monaco-editor/react";
 import { useState } from "react";
 import {
   Box,
@@ -8,108 +10,175 @@ import {
   Container,
   TextField,
   Typography,
-  Modal,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Paper,
+  Snackbar,
+  Alert,
 } from "@mui/material";
-
-const modalStyle = {
-  position: "absolute" as "absolute",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  width: 400,
-  bgcolor: "background.paper",
-  border: "2px solid #000",
-  boxShadow: 24,
-  p: 4,
-};
+import { supportedLanguages } from "@/constants/languages";
+import { createPaste } from "@/services/api";
 
 export default function Home() {
+  const router = useRouter();
   const [pasteText, setPasteText] = useState("");
-  const [expiryMinutes, setExpiryMinutes] = useState("5");
-  const [pasteUrl, setPasteUrl] = useState("");
-  const [deleteToken, setDeleteToken] = useState("");
-  const [openModal, setOpenModal] = useState(false);
+  const [expiryMinutes, setExpiryMinutes] = useState("60");
+  const [language, setLanguage] = useState("plaintext");
+  const [expiryError, setExpiryError] = useState<string>("");
+  const [textError, setTextError] = useState<string>("");
+  const [openSnackbar, setOpenSnackbar] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const minutes = parseInt(value);
+
+    if (isNaN(minutes) || minutes < 5 || minutes > 60) {
+      setExpiryError("Expiry time must be between 5 and 60 minutes");
+    } else {
+      setExpiryError("");
+    }
+
+    setExpiryMinutes(value);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const response = await fetch("http://localhost:5044/api/Pastes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+
+    // Validation checks
+    if (!pasteText.trim()) {
+      setTextError("Text cannot be empty");
+      return;
+    } else {
+      setTextError("");
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Calculate expiration time in Unix epoch
+      const now = Date.now();
+      const expiresAt = Math.floor(now / 1000) + parseInt(expiryMinutes) * 60;
+
+      const response = await createPaste({
         content: pasteText,
-      }),
-    });
-    const data = await response.json();
-    setPasteUrl(`${window.location.origin}/${data.pasteId}`);
-    setDeleteToken(data.deleteToken);
-    setOpenModal(true);
+        language,
+        expiresAt,
+      });
+
+      router.push(
+        `/${response.pasteId}?deleteToken=${encodeURIComponent(
+          response.deleteToken
+        )}`
+      );
+    } catch (error) {
+      console.error("Error creating paste:", error);
+      setOpenSnackbar(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <Container maxWidth="sm">
-      <Box sx={{ my: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Create a New Paste
-        </Typography>
-        <form onSubmit={handleSubmit}>
-          <TextField
-            fullWidth
-            multiline
-            rows={4}
-            variant="outlined"
-            label="Paste your text here"
-            value={pasteText}
-            onChange={(e) => setPasteText(e.target.value)}
-            margin="normal"
-            required
-          />
-          <TextField
-            fullWidth
-            type="number"
-            variant="outlined"
-            label="Expiry time (minutes)"
-            value={expiryMinutes}
-            onChange={(e) => setExpiryMinutes(e.target.value)}
-            inputProps={{ min: 1, max: 60 }}
-            margin="normal"
-            required
-          />
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            sx={{ mt: 2 }}
-          >
-            Submit
-          </Button>
-        </form>
-      </Box>
-      <Modal
-        open={openModal}
-        onClose={() => setOpenModal(false)}
-        aria-labelledby="modal-title"
-        aria-describedby="modal-description"
-      >
-        <Box sx={modalStyle}>
-          <Typography id="modal-title" variant="h6" component="h2">
-            Paste Created
+    <>
+      <Container maxWidth="md">
+        <Box sx={{ my: 4 }}>
+          <Typography variant="h4" component="h1" gutterBottom>
+            Create a New Paste
           </Typography>
-          <Typography id="modal-description" sx={{ mt: 2 }}>
-            Paste URL: {pasteUrl}
-          </Typography>
-          <Typography id="modal-description" sx={{ mt: 2 }}>
-            Delete Token: {deleteToken}
-          </Typography>
-          <Button
-            onClick={() => setOpenModal(false)}
-            variant="contained"
-            color="primary"
-            sx={{ mt: 2 }}
-          >
-            Close
-          </Button>
+          <form onSubmit={handleSubmit}>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel id="language-select-label">Language</InputLabel>
+              <Select
+                labelId="language-select-label"
+                id="language-select"
+                value={language}
+                label="Language"
+                onChange={(e) => setLanguage(e.target.value)}
+              >
+                {supportedLanguages.map((lang) => (
+                  <MenuItem key={lang.value} value={lang.value}>
+                    {lang.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Paper
+              elevation={3}
+              sx={{
+                paddingTop: 1,
+                paddingBottom: 1,
+                whiteSpace: "pre-wrap",
+                mb: textError ? 0 : 2,
+              }}
+            >
+              <Editor
+                height="50vh"
+                language={language}
+                onChange={(text) => setPasteText(text || "")}
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  wordWrap: "on",
+                }}
+              />
+            </Paper>
+            <Box sx={{ mb: 2, marginLeft: 2 }}>
+              <Typography variant="caption" color="error">
+                {textError}
+              </Typography>
+            </Box>
+
+            <TextField
+              fullWidth
+              type="number"
+              inputMode="numeric"
+              variant="outlined"
+              label="Expiry time (minutes)"
+              value={expiryMinutes}
+              onChange={handleExpiryChange}
+              margin="normal"
+              required
+              error={!!expiryError}
+              helperText={
+                expiryError ||
+                "Paste will be deleted after this time. Valid range: 5 to 60 minutes."
+              }
+              slotProps={{
+                htmlInput: {
+                  min: 5,
+                  max: 60,
+                },
+              }}
+            />
+            <Button
+              loading={isSubmitting}
+              type="submit"
+              variant="contained"
+              color="primary"
+              sx={{ mt: 2 }}
+            >
+              Submit
+            </Button>
+          </form>
         </Box>
-      </Modal>
-    </Container>
+      </Container>
+      <Snackbar
+        open={openSnackbar}
+        autoHideDuration={6000}
+        onClose={() => setOpenSnackbar(false)}
+      >
+        <Alert
+          onClose={() => setOpenSnackbar(false)}
+          severity="error"
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          Failed to create paste. Please try again.
+        </Alert>
+      </Snackbar>
+    </>
   );
 }

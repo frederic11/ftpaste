@@ -13,9 +13,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   ftpase-api:
-    build:
-      context: ./ftpaste-backend/ftpaste.api
-      dockerfile: Dockerfile
+    image: zubula7la7/ftpaste-backend:alpha-1
     container_name: ftpaste_api
     ports:
       - "5044:8080"
@@ -27,9 +25,7 @@ services:
     restart: always
 
   ftpaste-frontend:
-    build:
-      context: ./ftpaste-frontend
-      dockerfile: Dockerfile
+    image: zubula7la7/ftpaste-frontend:alpha-1
     container_name: ftpaste_frontend
     ports:
       - "3000:3000"
