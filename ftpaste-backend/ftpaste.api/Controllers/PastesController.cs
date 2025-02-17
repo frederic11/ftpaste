@@ -21,20 +21,52 @@ namespace FTPaste.Controllers
         [HttpPost]
         public async Task<IActionResult> CreatePaste([FromBody] Paste paste)
         {
-            if (string.IsNullOrEmpty(paste.Content))
+            // Check if the model is valid according to data annotations
+            if (!ModelState.IsValid)
             {
-                return BadRequest("Content must not be emplty.");
+                return BadRequest(ModelState);
             }
 
+            // Content validations
+            if (string.IsNullOrEmpty(paste.Content))
+            {
+                return BadRequest("Content must not be empty.");
+            }
+
+            // Check if content only contains whitespace, control characters, or zero-width characters
+            if (string.IsNullOrWhiteSpace(paste.Content) ||
+                paste.Content.All(c => char.IsControl(c)) ||
+                paste.Content.All(c => c == '\u200B' || c == '\u200C' || c == '\u200D' || c == '\uFEFF'))
+            {
+                return BadRequest("Content must contain visible characters.");
+            }
+
+            if (paste.Content.Length > Paste.MaxContentLength)
+            {
+                return BadRequest($"Content exceeds maximum allowed size of {Paste.MaxContentLength / (1024 * 1024)}MB.");
+            }
+
+            // Language validation
+            if (string.IsNullOrEmpty(paste.Language))
+            {
+                paste.Language = "plaintext";
+            }
+
+            // Initialize required fields
             paste.Id = Guid.NewGuid();
             paste.CreatedAt = DateTime.UtcNow.ToUnixEpoch();
             paste.DeleteToken = Guid.NewGuid().ToString();
 
-
+            // Expiration time validation and setup
             var maxExpiration = DateTime.UtcNow.AddHours(_maxExpirationHours).ToUnixEpoch();
-            // Check the expiration time
+
             if (paste.ExpiresAt.HasValue)
             {
+                if (paste.ExpiresAt.Value <= paste.CreatedAt)
+                {
+                    return BadRequest("Expiration time must be in the future.");
+                }
+
                 if (paste.ExpiresAt.Value > maxExpiration)
                 {
                     paste.ExpiresAt = maxExpiration;
@@ -45,15 +77,28 @@ namespace FTPaste.Controllers
                 paste.ExpiresAt = maxExpiration;
             }
 
-            await _pasteRepository.CreatePasteAsync(paste);
-
-            var response = new CreatePasteResponse
+            try
             {
-                PasteId = paste.Id,
-                DeleteToken = paste.DeleteToken
-            };
+                await _pasteRepository.CreatePasteAsync(paste);
 
-            return Ok(response);
+                var response = new CreatePasteResponse
+                {
+                    PasteId = paste.Id,
+                    DeleteToken = paste.DeleteToken
+                };
+
+                // Return 201 Created with the resource location
+                return CreatedAtAction(
+                    nameof(GetPaste),
+                    new { pasteId = paste.Id },
+                    response
+                );
+            }
+            catch (Exception)
+            {
+                // Log the exception here
+                return StatusCode(500, "An error occurred while creating the paste.");
+            }
         }
 
         [HttpGet("{pasteId}")]
@@ -68,7 +113,8 @@ namespace FTPaste.Controllers
             var response = new GetPasteResponse
             {
                 Id = paste.Id,
-                Content = paste.Content
+                Content = paste.Content,
+                Language = paste.Language
             };
 
             return Ok(response);

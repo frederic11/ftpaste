@@ -4,5 +4,6 @@ namespace FTPaste.Models
     {
         public Guid Id { get; set; }
         public required string Content { get; set; }
+        public required string Language { get; set; }
     }
 }
