@@ -42,6 +42,7 @@ export default function PastePage() {
   const [paste, setPaste] = useState<Paste | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [copyFail, setCopyFail] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
@@ -72,13 +73,21 @@ export default function PastePage() {
 
   const copyToClipboard = useCallback(() => {
     const currentUrl = window.location.href.split("?")[0];
-    navigator.clipboard
-      .writeText(currentUrl)
-      .then(() => {
-        setCopySuccess(true);
-        setTimeout(() => setCopySuccess(false), 2000);
-      })
-      .catch(() => console.error("Failed to copy"));
+
+    navigator.permissions
+      .query({ name: "clipboard-write" as PermissionName })
+      .then((result) => {
+        if (result.state === "granted" || result.state === "prompt") {
+          navigator.clipboard
+            .writeText(currentUrl)
+            .then(() => {
+              setCopySuccess(true);
+            })
+            .catch(() => console.error("Failed to copy"));
+        } else {
+          setCopyFail(true);
+        }
+      });
   }, []);
 
   useEffect(() => {
@@ -263,6 +272,21 @@ export default function PastePage() {
           sx={{ width: "100%" }}
         >
           Link copied to clipboard!
+        </Alert>
+      </Snackbar>
+      <Snackbar
+        open={copyFail}
+        autoHideDuration={2000}
+        onClose={() => setCopyFail(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+      >
+        <Alert
+          onClose={() => setCopyFail(false)}
+          severity="error"
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          Failed to Copy link to clipboard.
         </Alert>
       </Snackbar>
       <Snackbar
